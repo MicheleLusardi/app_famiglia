@@ -11,7 +11,12 @@ const oggi = () => new Date().toLocaleDateString("sv-SE");              // YYYY-
 const meseCorrente = () => oggi().slice(0, 7);                          // YYYY-MM
 const meseSucc = ym => { const [y, m] = ym.split("-").map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`; };
 
+const DURATA_PRESSIONE_MS = 3000;     // tempo di pressione per spuntare/ripristinare una voce
+const TOLLERANZA_MOVIMENTO_PX = 10;   // oltre questo spostamento la pressione si annulla (es. scroll)
+
 let lista = [];
+let pressione = null;                 // pressione in corso: { li, id, x, y, timer }
+let ridisegnoInSospeso = false;       // aggiornamento lista arrivato durante una pressione
 let lookups = { negozi: [], tipologie: [], imputazioni: [] };
 let channel = null;
 let avviata = false;
@@ -98,6 +103,8 @@ async function caricaLista() {
 }
 
 function disegnaLista() {
+  // non ridisegnare mentre un dito è premuto su una voce: si farà al rilascio
+  if (pressione) { ridisegnoInSospeso = true; return; }
   const ul = $("lista"); ul.innerHTML = "";
   for (const it of lista) {
     const li = document.createElement("li");
@@ -107,11 +114,49 @@ function disegnaLista() {
     const del = document.createElement("button"); del.className = "del"; del.textContent = "×"; del.title = "Elimina";
     del.addEventListener("click", ev => { ev.stopPropagation(); eliminaVoce(it); });
     li.append(txt, q, del);
-    li.addEventListener("click", () => barra(it));
+    attivaPressioneLunga(li, it.id);
     ul.append(li);
   }
   $("lista-vuota").classList.toggle("hidden", lista.length > 0);
+  $("lista-hint").classList.toggle("hidden", lista.length === 0);
   $("btn-svuota").classList.toggle("hidden", lista.length === 0);
+}
+
+// Spunta/ripristino solo dopo una pressione continua di DURATA_PRESSIONE_MS,
+// per evitare tocchi accidentali (es. telefono in tasca o scroll della lista).
+function attivaPressioneLunga(li, id) {
+  li.addEventListener("pointerdown", ev => {
+    if (ev.button !== 0 || ev.target.closest(".del")) return;
+    annullaPressione();
+    li.classList.add("holding");
+    pressione = {
+      li, id, x: ev.clientX, y: ev.clientY,
+      timer: setTimeout(completaPressione, DURATA_PRESSIONE_MS)
+    };
+  });
+  li.addEventListener("pointermove", ev => {
+    if (!pressione || pressione.li !== li) return;
+    const spostamento = Math.hypot(ev.clientX - pressione.x, ev.clientY - pressione.y);
+    if (spostamento > TOLLERANZA_MOVIMENTO_PX) annullaPressione();
+  });
+  for (const tipo of ["pointerup", "pointerleave", "pointercancel"]) li.addEventListener(tipo, annullaPressione);
+  li.addEventListener("contextmenu", ev => ev.preventDefault());   // niente menu del long-press
+}
+
+function completaPressione() {
+  const id = pressione.id;
+  annullaPressione();
+  if (navigator.vibrate) navigator.vibrate(50);                    // conferma tattile (solo Android)
+  const voce = lista.find(x => x.id === id);                       // voce aggiornata, anche dopo un realtime
+  if (voce) barra(voce);
+}
+
+function annullaPressione() {
+  if (!pressione) return;
+  clearTimeout(pressione.timer);
+  pressione.li.classList.remove("holding");
+  pressione = null;
+  if (ridisegnoInSospeso) { ridisegnoInSospeso = false; disegnaLista(); }
 }
 
 async function barra(it) {
