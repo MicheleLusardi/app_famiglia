@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2e7d32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Spesa">
+  <title>Spesa famiglia</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== LOGIN ===== -->
+  <section id="view-login" class="view hidden">
+    <h1>Spesa famiglia</h1>
+    <form id="form-login" class="card">
+      <label>Email <input type="email" id="login-email" required autocomplete="username"></label>
+      <label>Password <input type="password" id="login-password" required autocomplete="current-password"></label>
+      <button type="submit" class="btn primary">Entra</button>
+      <p id="login-msg" class="msg"></p>
+    </form>
+  </section>
+
+  <!-- ===== NON ABILITATO ===== -->
+  <section id="view-noaccess" class="view hidden">
+    <h1>Account non abilitato</h1>
+    <p class="card">Il tuo account non è ancora tra i membri della famiglia. Chiedi a chi gestisce l'app di abilitarti.</p>
+    <button class="btn" data-action="logout">Esci</button>
+  </section>
+
+  <!-- ===== APP ===== -->
+  <section id="view-app" class="view hidden">
+    <header class="topbar">
+      <span id="hello"></span>
+      <span>
+        <button class="btn small" id="btn-pwd">Password</button>
+        <button class="btn small" data-action="logout">Esci</button>
+      </span>
+    </header>
+
+    <!-- LISTA SPESA -->
+    <div id="tab-lista" class="tab">
+      <form id="form-lista" class="row">
+        <input id="lista-articolo" placeholder="Articolo" required>
+        <input id="lista-qta" placeholder="Q.tà" class="qta">
+        <button class="btn primary" type="submit">+</button>
+      </form>
+      <ul id="lista" class="lista"></ul>
+      <p id="lista-vuota" class="msg">Lista vuota</p>
+      <button id="btn-svuota" class="btn danger full">Svuota lista</button>
+    </div>
+
+    <!-- SPESE -->
+    <div id="tab-spese" class="tab hidden">
+      <form id="form-spesa" class="card">
+        <label>Data <input type="date" id="sp-data" required></label>
+        <label>Importo € <input type="number" id="sp-importo" step="0.01" min="0.01" inputmode="decimal" required></label>
+        <label>Negozio <select id="sp-negozio" data-lookup="negozi" required></select></label>
+        <label>Tipologia <select id="sp-tipologia" data-lookup="tipologie" required></select></label>
+        <label>Imputazione <select id="sp-imputazione" data-lookup="imputazioni" required></select></label>
+        <label>Note <input id="sp-note"></label>
+        <button class="btn primary full" type="submit">Salva spesa</button>
+        <p id="spesa-msg" class="msg"></p>
+      </form>
+      <div class="row">
+        <label class="grow">Mese <input type="month" id="sp-mese"></label>
+      </div>
+      <ul id="elenco-spese" class="elenco"></ul>
+    </div>
+
+    <!-- REPORT -->
+    <div id="tab-report" class="tab hidden">
+      <label>Mese <input type="month" id="rp-mese"></label>
+      <div id="report"></div>
+    </div>
+
+    <nav class="tabbar">
+      <button data-tab="lista" class="active">Lista</button>
+      <button data-tab="spese">Spese</button>
+      <button data-tab="report">Report</button>
+    </nav>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
