@@ -59,20 +59,6 @@ table { width: 100%; border-collapse: collapse; background: #fff; border-radius:
 th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 15px; }
 td.n, th.n { text-align: right; }
 tr.tot td { font-weight: 700; background: #e8f5e9; }
-tr.gruppo { cursor: pointer; }
-tr.gruppo:active td { background: #f1f8e9; }
-tr.dettaglio td { font-size: 13px; color: #555; background: #fafafa; padding: 6px 10px 6px 26px; }
-tr.dettaglio td.n { padding-left: 10px; }
-
-/* Selezione settimane nel report */
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
-.chip {
-  border: 1px solid #ccc; background: #fff; color: #444; border-radius: 16px;
-  padding: 6px 12px; font-size: 14px; cursor: pointer; line-height: 1.2; text-align: center;
-}
-.chip small { display: block; font-size: 11px; color: #888; }
-.chip.active { background: #2e7d32; border-color: #2e7d32; color: #fff; }
-.chip.active small { color: #e8f5e9; }
 
 /* Tab bar */
 .tabbar {

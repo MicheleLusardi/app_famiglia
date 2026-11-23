@@ -292,125 +292,35 @@ async function caricaSpese() {
 }
 
 // ================================================================ REPORT
-// Settimane ISO (lunedì-domenica, come ISOWEEKNUM di Excel), limitate ai giorni del mese.
-let speseReport = [];                         // spese del mese, con numero di settimana
-const settimaneSelezionate = new Set();       // vuoto = tutte le settimane
-const dettagliAperti = new Set();             // gruppi espansi, chiave "campo|nome"
-
-$("rp-mese").addEventListener("change", () => {
-  settimaneSelezionate.clear();
-  dettagliAperti.clear();
-  caricaReport();
-});
-
-function settimanaIso(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const giorno = new Date(Date.UTC(y, m - 1, d));
-  const giornoSettimana = giorno.getUTCDay() || 7;                   // lunedì=1 ... domenica=7
-  giorno.setUTCDate(giorno.getUTCDate() + 4 - giornoSettimana);      // giovedì della stessa settimana
-  const inizioAnno = new Date(Date.UTC(giorno.getUTCFullYear(), 0, 1));
-  return Math.ceil(((giorno - inizioAnno) / 86400000 + 1) / 7);
-}
-
-function settimaneDelMese(ym) {
-  // [{ numero, dal, al }] con dal/al in formato YYYY-MM-DD, nell'ordine del mese
-  const [y, m] = ym.split("-").map(Number);
-  const giorniNelMese = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const settimane = [];
-  for (let d = 1; d <= giorniNelMese; d++) {
-    const iso = `${ym}-${String(d).padStart(2, "0")}`;
-    const numero = settimanaIso(iso);
-    const ultima = settimane[settimane.length - 1];
-    if (ultima && ultima.numero === numero) ultima.al = iso;
-    else settimane.push({ numero, dal: iso, al: iso });
-  }
-  return settimane;
-}
+$("rp-mese").addEventListener("change", caricaReport);
 
 async function caricaReport() {
   const ym = $("rp-mese").value || meseCorrente();
-  const { data, error } = await sb.from("spese")
-    .select("id,data,importo,note,negozi(nome),tipologie(nome),imputazioni(nome)")
-    .gte("data", ym + "-01").lt("data", meseSucc(ym) + "-01")
-    .order("data").order("id");
+  const { data, error } = await sb.from("spese_mensili").select("*").eq("mese", ym + "-01");
   if (error) return errore(error);
-  speseReport = data.map(s => ({ ...s, settimana: settimanaIso(s.data) }));
-  disegnaSettimane(ym);
-  disegnaReport();
-}
-
-function disegnaSettimane(ym) {
-  const box = $("rp-settimane"); box.innerHTML = "";
-  const chip = (testo, isAttivo, azione) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "chip" + (isAttivo ? " active" : "");
-    b.innerHTML = testo;
-    b.addEventListener("click", () => { azione(); disegnaSettimane(ym); disegnaReport(); });
-    box.append(b);
-  };
-  chip("Tutte", settimaneSelezionate.size === 0, () => settimaneSelezionate.clear());
-  const settimane = settimaneDelMese(ym);
-  for (const s of settimane) {
-    const periodo = s.dal === s.al ? dataIT(s.dal).slice(0, 5) : `${s.dal.slice(8)}–${dataIT(s.al).slice(0, 5)}`;
-    chip(`Sett. ${s.numero}<small>${periodo}</small>`, settimaneSelezionate.has(s.numero), () => {
-      if (settimaneSelezionate.has(s.numero)) settimaneSelezionate.delete(s.numero);
-      else settimaneSelezionate.add(s.numero);
-      if (settimaneSelezionate.size === settimane.length) settimaneSelezionate.clear();   // tutte = "Tutte"
-    });
-  }
-}
-
-function disegnaReport() {
   const box = $("report"); box.innerHTML = "";
-  const spese = settimaneSelezionate.size === 0
-    ? speseReport
-    : speseReport.filter(s => settimaneSelezionate.has(s.settimana));
-  if (!spese.length) { box.innerHTML = '<p class="msg">Nessuna spesa nel periodo</p>'; return; }
-  box.append(tabella("Per tipologia", "tipologie", spese),
-             tabella("Per imputazione", "imputazioni", spese));
+  if (!data.length) { box.innerHTML = '<p class="msg">Nessuna spesa nel mese</p>'; return; }
+  box.append(tabella("Per tipologia", raggruppa(data, "tipologia")),
+             tabella("Per imputazione", raggruppa(data, "imputazione")));
 }
 
-function raggruppa(spese, campo) {
-  // campo = "tipologie" | "imputazioni" -> [{ nome, totale, spese[] }] dal totale più alto
-  const gruppi = new Map();
-  for (const s of spese) {
-    const nome = s[campo]?.nome ?? "(senza)";
-    if (!gruppi.has(nome)) gruppi.set(nome, { nome, totale: 0, spese: [] });
-    const g = gruppi.get(nome);
-    g.totale += Number(s.importo);
-    g.spese.push(s);
-  }
-  return [...gruppi.values()].sort((a, b) => b.totale - a.totale);
+function raggruppa(righe, campo) {
+  const m = new Map();
+  for (const r of righe) m.set(r[campo], (m.get(r[campo]) || 0) + Number(r.totale));
+  return [...m.entries()].sort((a, b) => b[1] - a[1]);
 }
 
-function tabella(titolo, campo, spese) {
+function tabella(titolo, righe) {
   const t = document.createElement("table");
-  const gruppi = raggruppa(spese, campo);
-  const tot = gruppi.reduce((s, g) => s + g.totale, 0);
-  const riga = (celle, classe) => {
-    const r = t.insertRow(); if (classe) r.className = classe;
-    celle.forEach(([v, isNumero]) => { const c = r.insertCell(); c.textContent = v; if (isNumero) c.className = "n"; });
-    return r;
+  const tot = righe.reduce((s, r) => s + r[1], 0);
+  const tr = (cells, cls) => {
+    const r = t.insertRow(); if (cls) r.className = cls;
+    cells.forEach(([v, n]) => { const c = r.insertCell(); c.textContent = v; if (n) c.className = "n"; });
   };
   const h = t.createTHead().insertRow();
-  for (const [v, isNumero] of [[titolo], ["€", true], ["%", true]]) {
-    const th = document.createElement("th"); th.textContent = v; if (isNumero) th.className = "n"; h.append(th);
-  }
-  for (const g of gruppi) {
-    const chiave = campo + "|" + g.nome;
-    const isAperto = dettagliAperti.has(chiave);
-    const r = riga([[(isAperto ? "▾ " : "▸ ") + g.nome], [eur(g.totale), true], [(g.totale / tot * 100).toFixed(0) + "%", true]], "gruppo");
-    r.addEventListener("click", () => {
-      if (isAperto) dettagliAperti.delete(chiave); else dettagliAperti.add(chiave);
-      disegnaReport();
-    });
-    if (!isAperto) continue;
-    for (const s of g.spese) {
-      const descrizione = `${dataIT(s.data).slice(0, 5)} · ${s.negozi?.nome ?? ""}${s.note ? " · " + s.note : ""}`;
-      riga([[descrizione], [eur(s.importo), true], [""]], "dettaglio");
-    }
-  }
-  riga([["Totale"], [eur(tot), true], ["100%", true]], "tot");
+  for (const [v, n] of [[titolo], ["€", true], ["%", true]]) { const th = document.createElement("th"); th.textContent = v; if (n) th.className = "n"; h.append(th); }
+  for (const [k, v] of righe) tr([[k], [eur(v), true], [(v / tot * 100).toFixed(0) + "%", true]]);
+  tr([["Totale"], [eur(tot), true], ["100%", true]], "tot");
   return t;
 }
 
