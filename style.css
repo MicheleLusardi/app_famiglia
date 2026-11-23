@@ -40,7 +40,7 @@ input, select {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 0;
   background: rgba(46, 125, 50, .22);
 }
-.lista li.holding::before { width: 100%; transition: width 3s linear; }
+.lista li.holding::before { width: 100%; transition: width 1.5s linear; }
 .lista li > * { position: relative; }
 .lista li .txt { flex: 1; }
 .lista li .q { color: #777; font-size: 14px; }

@@ -11,7 +11,7 @@ const oggi = () => new Date().toLocaleDateString("sv-SE");              // YYYY-
 const meseCorrente = () => oggi().slice(0, 7);                          // YYYY-MM
 const meseSucc = ym => { const [y, m] = ym.split("-").map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`; };
 
-const DURATA_PRESSIONE_MS = 3000;     // tempo di pressione per spuntare/ripristinare una voce
+const DURATA_PRESSIONE_MS = 1500;     // tempo di pressione per spuntare/ripristinare una voce
 const TOLLERANZA_MOVIMENTO_PX = 10;   // oltre questo spostamento la pressione si annulla (es. scroll)
 
 let lista = [];
